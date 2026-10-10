@@ -1,0 +1,1 @@
+Parallel programming with OpenMP divides loop iterations among threads to reduce execution time.
