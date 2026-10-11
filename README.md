@@ -22,3 +22,15 @@ Options: -m seq|omp|check, -n documents, -t threads, -th threshold,
 
 ## Folders
 src/ source code | tests/ small test documents | results/ CSV files and graphs
+
+## Web dashboard (optional)
+A local web interface in `docsim-frontend/` runs the program from the browser
+and shows the results, tables and charts. It only drives the C program in `src/`;
+the parallel computation itself stays in C + OpenMP.
+
+Requirements: Python 3.8+ and gcc with OpenMP.
+
+    cd docsim-frontend
+    python server.py
+
+Then open http://127.0.0.1:8000
