@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DocSim · Plagiarism detector</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23ffd23f'/><path d='M24 36h52M24 52h34M24 68h46' stroke='%231c1600' stroke-width='9' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <h1><span>DocSim</span></h1>
+      <p>Find copied passages, and see how much faster OpenMP finds them</p>
+    </div>
+    <span class="spacer"></span>
+    <span class="chip" id="chipProject"><i class="dot"></i><span>Connecting…</span></span>
+    <span class="chip" id="chipCpu" hidden></span>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch between dark and light theme">Theme</button>
+  </header>
+
+  <!-- ===================== controls ===================== -->
+  <aside class="side" aria-label="Controls">
+    <section class="panel">
+      <h2>Documents</h2>
+      <div class="seg" id="srcSeg" role="group" aria-label="Where the documents come from">
+        <button type="button" data-src="upload" aria-pressed="true">Upload</button>
+        <button type="button" data-src="tests" aria-pressed="false">Samples</button>
+        <button type="button" data-src="dataset" aria-pressed="false">PAN11</button>
+      </div>
+
+      <div id="srcUpload" class="field-gap">
+        <div class="drop" id="drop" role="button" tabindex="0">Drop text files here or <u>browse</u>
+          <input type="file" id="fileIn" multiple hidden></div>
+        <div class="files" id="fileList"></div>
+        <details class="field-gap"><summary>Paste text instead</summary>
+          <input type="text" id="pasteName" placeholder="Name, e.g. essay_A" style="margin:8px 0">
+          <textarea id="pasteText" placeholder="Paste a document…"></textarea>
+          <button class="btn small" id="pasteAdd" type="button" style="margin-top:8px">Add pasted text</button>
+        </details>
+        <p class="note" style="margin:10px 0 0">Add at least two documents. Plain text works best.</p>
+      </div>
+
+      <div id="srcTests" class="field-gap" hidden><p class="note" id="testsInfo"></p></div>
+
+      <div id="srcDataset" class="field-gap" hidden>
+        <p class="note" id="datasetInfo"></p>
+        <label class="field-gap">Use the first N documents (0 = all)
+          <input type="number" id="nDocs" min="0" value="200"></label>
+        <div class="chips" style="margin-top:10px" id="nPresets"></div>
+        <p class="note" id="pairCount" style="margin:8px 0 0"></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Settings</h2>
+      <div>
+        <div class="note" style="margin-bottom:7px">Threads to compare</div>
+        <div class="chips" id="threadChips"></div>
+        <p class="note" id="cpuNote" style="margin:8px 0 0"></p>
+      </div>
+      <label class="field-gap">Repeats per measurement
+        <input type="number" id="reps" min="1" max="20" value="3"></label>
+      <p class="note" style="margin:5px 0 0">More repeats give steadier timings. The mean is reported.</p>
+
+      <div class="field-gap">
+        <div class="thr-row"><label for="thr">Similarity threshold</label><output id="thrOut" for="thr">0.80</output></div>
+        <input type="range" id="thr" min="0" max="1" step="0.01" value="0.80">
+        <p class="note" id="thrNote" style="margin:2px 0 0">Pairs at or above this score are flagged.</p>
+      </div>
+
+      <div class="field-gap">
+        <label>Phrase length (words)<input type="number" id="k" min="1" max="8" value="3"></label>
+      </div>
+
+      <details class="field-gap"><summary>More options</summary>
+        <div style="margin-top:8px">
+          <label>Bytes per file (0 = all)<input type="number" id="maxBytes" min="0" value="0"></label>
+        </div>
+        <label class="check field-gap"><input type="checkbox" id="optVerify" checked>
+          <span>Verify OpenMP gives the same answer<small>Runs the program's own check mode once.</small></span></label>
+        <label class="check" style="margin-top:10px"><input type="checkbox" id="optDist" checked>
+          <span>Measure the similarity distribution<small>Counts pairs at several thresholds, so it adds a few runs.</small></span></label>
+      </details>
+
+      <div class="actions">
+        <button class="btn primary block" id="runBtn" type="button">Run analysis</button>
+        <button class="btn block" id="scaleBtn" type="button">Run scaling study</button>
+      </div>
+
+      <div class="progress" id="progress" hidden aria-live="polite">
+        <div class="top"><b id="progLabel">Starting…</b><span id="progCount"></span></div>
+        <div class="bar live"><i id="progFill" style="width:4%"></i></div>
+        <div class="top"><span id="progTime">0 s</span><button class="btn small" id="cancelBtn" type="button">Cancel</button></div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ===================== results ===================== -->
+  <main class="main" id="main">
+    <div id="alertBox"></div>
+    <div id="content" class="stack"></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Compare two documents" aria-hidden="true">
+  <div class="dhead">
+    <div class="sc num" id="dScore"></div>
+    <div class="meta" id="dMeta"></div>
+    <button class="btn small" id="dClose" type="button">Close</button>
+  </div>
+  <div class="dbody" id="dBody"></div>
+</aside>
+<div id="tip" role="tooltip"></div>
+
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

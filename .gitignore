@@ -5,3 +5,6 @@ dataset/
 *prompt*
 *llm*
 LLM*
+docsim-frontend/bin/
+__pycache__/
+docsim
